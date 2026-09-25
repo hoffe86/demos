@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:layout_marginBottom="4dp"
+    android:background="#F0F0F0"> <TextView
+    android:id="@+id/tvPhraseText"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:textStyle="bold"
+    android:textColor="@android:color/black"
+    android:textSize="16sp"
+    android:text="Phrase Text Goes Here" />
+
+    <TextView
+        android:id="@+id/tvPhraseTimestamps"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:text="Start: N/A, End: N/A" />
+
+</LinearLayout>
