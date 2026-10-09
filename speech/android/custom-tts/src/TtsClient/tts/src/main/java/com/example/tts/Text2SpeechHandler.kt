@@ -25,11 +25,7 @@ class Text2SpeechHandler {
                     // Initialization failed
                 }
             }
-<<<<<<<< HEAD:src/TtsClient/tts/src/main/java/com/example/tts/Text2SpeechHandler.kt
-        }/*, "com.example.app"*/)
-========
-        }, "com.example.app")
->>>>>>>> main:src/CustomVoice/tts/src/main/java/com/example/tts/Text2SpeechHandler.kt
+        })
     }
 
     fun speak(text: String) {

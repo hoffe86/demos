@@ -1,21 +1,32 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
 }
 
+val modelProperties = Properties().apply {
+    val config = file("model.properties")
+    if (config.exists()) {
+        config.reader(Charsets.UTF_8).use { load(it) }
+    }
+}
+
+fun modelResource(name: String): String = modelProperties.getProperty(name, "")
+    .replace("&", "&amp;")
+    .replace("<", "&lt;")
+    .replace(">", "&gt;")
+    .replace("'", "\\'")
+    .replace("\"", "\\\"")
+
 android {
     namespace = "com.customvoice.tts"
     compileSdk = 35
 
-    sourceSets {
-       getByName("main")
-         {
-              assets.srcDirs("src/main/model")
-         }
-    }
-
     defaultConfig {
         minSdk = 24
+        resValue("string", "voice", modelResource("voice"))
+        resValue("string", "license", modelResource("license"))
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")

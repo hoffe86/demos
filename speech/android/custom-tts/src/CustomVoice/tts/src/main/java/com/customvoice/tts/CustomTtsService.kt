@@ -13,6 +13,7 @@ import com.microsoft.cognitiveservices.speech.SpeechSynthesisCancellationDetails
 import com.microsoft.cognitiveservices.speech.SpeechSynthesisOutputFormat
 import com.microsoft.cognitiveservices.speech.SpeechSynthesizer
 import java.io.File
+import java.io.IOException
 import java.util.Locale
 
 /**
@@ -31,6 +32,17 @@ class CustomTtsService : TextToSpeechService() {
         super.onCreate()
         // Initialize the TTS engine here if needed
         Log.i("CustomTtsService", "TTS initialized")
+        embeddedSpeechModelLicense = getString(com.customvoice.tts.R.string.license)
+        embeddedSpeechSynthesisVoiceName = getString(com.customvoice.tts.R.string.voice)
+        try {
+            ModelSetup.validateConfiguration(
+                embeddedSpeechSynthesisVoiceName!!,
+                embeddedSpeechModelLicense!!
+            )
+        } catch (ex: IllegalArgumentException) {
+            Log.e("CustomTtsService", ex.message ?: "Missing model configuration")
+            return
+        }
         this.modelDirectory = copyAssetFolder(
             "model",
             File(applicationContext.filesDir, "models/model"),
@@ -42,11 +54,8 @@ class CustomTtsService : TextToSpeechService() {
             embeddedSpeechConfig = EmbeddedSpeechConfig.fromPath(modelDirectory)
         } else {
             Log.e("CustomTtsService", "Failed to copy model directory")
-            throw Exception("Failed to copy model directory")
+            return
         }
-
-        embeddedSpeechModelLicense = getString(com.customvoice.tts.R.string.license)
-        embeddedSpeechSynthesisVoiceName = getString(com.customvoice.tts.R.string.voice)
 
         if (!embeddedSpeechSynthesisVoiceName!!.isEmpty() && !embeddedSpeechModelLicense!!.isEmpty()) {
             // Selects the embedded speech synthesis voice to use.
@@ -78,26 +87,13 @@ class CustomTtsService : TextToSpeechService() {
 
         try {
             val assetManager = context.assets
-            val files = assetManager.list(assetFolder) ?: return null
-
-            if (!destination.exists()) {
-                destination.mkdirs()
+            return ModelSetup.copyAssets(assetManager.list(assetFolder), destination) { name ->
+                assetManager.open("$assetFolder/$name")
             }
-
-            for (file in files) {
-                val outFile = File(destination, file)
-                if (!outFile.exists()) {
-                    val inputStream = assetManager.open("$assetFolder/$file")
-                    inputStream.use { input ->
-                        outFile.outputStream().use { output -> input.copyTo(output) }
-                    }
-                }
-            }
-        } catch (ex: Exception) {
+        } catch (ex: IOException) {
             Log.e("CustomTtsService", "Error copying asset folder", ex)
+            return null
         }
-
-        return destination.absolutePath
     }
 
     override fun onIsLanguageAvailable(
@@ -132,7 +128,7 @@ class CustomTtsService : TextToSpeechService() {
 
     override fun onStop() {
         Log.i("CustomTtsService", "onStop called")
-        synthesizer!!.StopSpeakingAsync()
+        synthesizer?.StopSpeakingAsync()
     }
 
     override fun onSynthesizeText(
@@ -147,6 +143,7 @@ class CustomTtsService : TextToSpeechService() {
             if (synthesizer == null) {
                 Log.e("CustomTtsService", "Speech synthesizer is not initialized")
                 callback!!.error(TextToSpeech.ERROR_SERVICE)
+                return
             }
 
             callback!!.start(24000, AudioFormat.ENCODING_PCM_16BIT, 1)
@@ -159,18 +156,17 @@ class CustomTtsService : TextToSpeechService() {
             if (isSsml) {
                 Log.i("CustomTtsService", "Processing SSML text")
                 // Ensure SSML has required tags and attributes
-                var ssmlText = text
+                var ssmlText = ModelSetup.configureSsml(text, embeddedSpeechSynthesisVoiceName!!)
                 // Try to parse and check for <voice> and required attributes, else wrap
                 if (text.contains("<voice") && text.contains("name=")) {
-                    ssmlText = text
+                    ssmlText = ModelSetup.configureSsml(text, embeddedSpeechSynthesisVoiceName!!)
                 } else {
                     // Extract language and voice name from config or fallback
                     val text = text.replace("<?xml version=\"1.0\"?><speak>", "")
                         .replace("</speak>", "")
                     val lang = "de-DE"
                     val gender = "female"
-                    val voiceName = embeddedSpeechSynthesisVoiceName
-                        ?: "__MODEL_VOICE__"
+                    val voiceName = ModelSetup.escapeVoice(embeddedSpeechSynthesisVoiceName!!)
                     ssmlText =
                         "<?xml version=\"1.0\"?><speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='$lang'>" +
                                 "<voice xml:lang='$lang' xml:gender='$gender' name='$voiceName'>$text</voice></speak>"

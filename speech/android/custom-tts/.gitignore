@@ -196,3 +196,11 @@ fabric.properties
 ### AndroidStudio Patch ###
 
 !/gradle/wrapper/gradle-wrapper.jar
+
+# Licensed embedded models and local voice configuration
+/src/CustomVoice/tts/src/main/assets/*StyleNeural/
+/src/CustomVoice/tts/src/main/assets/model/
+/src/CustomVoice/tts/model.properties
+/src/TtsClient/tts/src/main/assets/*StyleNeural/
+/src/TtsClient/tts/src/main/assets/model/
+/src/TtsClient/tts/model.properties

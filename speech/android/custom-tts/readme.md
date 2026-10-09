@@ -1,72 +1,64 @@
 # Android Custom Voice Sample
-This sample demonstrates the Azure Speech Embedded SDK for Android, which allows you to add speech recognition and synthesis capabilities to your Android applications. 
-The sample includes a simple user interface that allows users to interact with the speech recognition and synthesis features.
+
+These Android Automotive and TTS client samples use the Azure Speech Embedded
+SDK to synthesize speech with a locally supplied, licensed model.
 
 ## Prerequisites
-- Android Studio 4.0 or later
-- Android 15 (API level 35) or later
-- Android SDK 36 or later
-- Kotlin 
 
-**Important:** The model requires an ARM64 based hardware architecture, so the App won't run on x86 or x64 system.
+- Android Studio with the Android SDK required by each project's Gradle configuration.
+- ARM64 Android hardware for embedded synthesis; x86/x64 emulators cannot run the model.
+- An authorized embedded speech model, its exact voice name, and its model license.
 
-## Package Structure
+The repository does **not** distribute a model or license. A public checkout can
+build without them, but the TTS service reports a setup error and synthesis is
+unavailable until both are supplied.
 
-### Custom Voice App
-App is developed for Android Automotive OS
+## Local model setup
 
-#### com.example.tts Package
-This package contains the classes and resources related to text-to-speech (TTS) functionality, which includes the CustomTtsService class for the custom implementation of the TextToSpeechService and a Text2SpeechHandler class to interact with the TTS system.
+For each project you want to run, place the complete model files directly in:
 
-In addition the package contains the custom embedded voice model as assets, which will be copied over to the app's data directory when the TTS service is started.
+- `src\CustomVoice\tts\src\main\assets\model`
+- `src\TtsClient\tts\src\main\assets\model`
 
-#### com.example.app Package
-This package contains the main service and the user interface components of the application. The Main Service class is main entry point, which create an instance of the MainSession class, which spins up the MainScreen.
+Preserve all model-internal file names and metadata. Do not introduce an extra
+directory level underneath `model`.
 
-## Running the Sample
-1. Clone the repository to your local machine.
-2. Open the project in Android Studio.
-3. Install 'Automotive (1408p landscape)' emulator image from the Virtual Device Manager.
-3. Build and run the 'app' project on an Android device or emulator.
+Copy that project's `tts\model.properties.example` to `tts\model.properties`.
+Set `voice` to the exact SDK voice identifier provided with the model and
+`license` to its authorized license string. Values use Java properties syntax;
+escape literal backslashes as `\\`. Keep configuration on your own machine.
 
+Both model directories and `model.properties` files are ignored by Git.
+Gradle generates the voice/license string resources from the local properties;
+do not add licenses to tracked Android resources.
 
-#### TtsClient
-Modified TtsClient to integrated the TTS service based on the custom custom embedded voice model, which is integrated via the Azure Speech Embedded SDK. 
+At startup, each TTS service checks that voice and license are non-blank, that
+model assets are present and non-empty, and that copying them succeeds. Assets
+are copied into the application's `models/model` directory. The SDK validates
+the model format and license when it initializes synthesis.
 
-Modifications include:
-- Adding the TTS package as external jar dependency to intefrated the custom TTS service.
-- Added dependeny for the [Azure Speech Embedded SDK](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/quickstarts/setup-platform?tabs=windows%2Cubuntu%2Cdotnetcli%2Candroid%2Cmaven%2Cnodejs%2Cmac%2Cpypi&pivots=programming-language-java). (com.microsoft.cognitiveservices.speech:client-sdk:1.43.0.)
-- Register the custom TTS service in the AndroidManifest.xml file for the app package.
-``` xml
-...
-<service
-    android:name="com.example.tts.CustomTtsService"
-    android:exported="true"
-    android:label="Custom TTS Engine"
-    android:permission="android.permission.BIND_TEXT_SERVICE">
-    <intent-filter>
-        <action android:name="android.intent.action.TTS_SERVICE" />
-        <category android:name="android.intent.category.DEFAULT" />
-    </intent-filter>
+## Running the samples
 
-    <meta-data
-        android:name="android.speech.tts"
-        android:resource="@xml/tts_engine" />
-</service>
+Open either `src\CustomVoice` or `src\TtsClient` in Android Studio, configure the
+local model as above, and build/run the application on compatible ARM64 hardware.
+The CustomVoice application targets Android Automotive OS.
 
-...
-```
+The `tts` modules implement Android `TextToSpeechService`; their SDK dependency
+and service registrations are already included. Requests support plain text and
+SSML. Built-in styled samples use `__MODEL_VOICE__` in their SSML; the service
+substitutes the locally configured voice with XML-safe escaping. SSML requests
+without a voice tag are wrapped with the configured voice.
 
-- Modified the custom TextToSpeechService to work in the Queueing mode and added handling for SSML to adjust the speak tag and added voice tag to provided information about the voice which should be used.
+Model languages and expressive styles must match the supplied model. The
+existing sample language behavior is unchanged.
 
-This modification was required to ensure the Azure Speech Embedded SDK can process the SSML correctly and use the custom custom embedded voice model for text-to-speech synthesis.
+## Publication precautions
 
-__Original SSML:__
-``` xml
-<?xml version="1.0"?><speak>Auf der schnellsten Route gibt es momentan Verkehrsverzögerungen von insgesamt <say-as interpret-as="TTS-DURATION"><say-as format="slot" interpret-as="g_requested_destination_traffic_delay_time">fünf Minuten</say-as></say-as>. Du benötigst ungefähr <say-as interpret-as="TTS-DURATION"><say-as format="slot" interpret-as="g_requested_destination_driving_time">30 Minuten</say-as></say-as>, um das Ziel <say-as format="slot" interpret-as="g_final_destination">Berlin</say-as> zu erreichen.</speak>
+Local APKs and AARs built with these assets contain the private model and
+license. **Do not upload or publish those packages, build outputs, or local
+configuration.** Ignore rules do not make packaged assets safe to distribute.
 
-```
-__Modified SSML:__
-``` xml
-<?xml version="1.0"?> <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xmlns:mstts='https://www.w3.org/2001/mstts' xml:lang='de-DE'><voice xml:lang='de-DE' xml:gender='female' name='__MODEL_VOICE__'>Auf der schnellsten Route gibt es momentan Verkehrsverzögerungen von insgesamt <say-as interpret-as="TTS-DURATION"><say-as format="slot" interpret-as="g_requested_destination_traffic_delay_time">fünf Minuten</say-as></say-as>. Du benötigst ungefähr <say-as interpret-as="TTS-DURATION"><say-as format="slot" interpret-as="g_requested_destination_driving_time">30 Minuten</say-as></say-as>, um das Ziel <say-as format="slot" interpret-as="g_final_destination">Berlin</say-as> zu erreichen.</voice></speak>
-```
+Obtain the model owner's permission before sharing any model, license, or
+generated package.
+
+SDK reference: [Azure Speech SDK platform setup](https://learn.microsoft.com/en-us/azure/ai-services/speech-service/quickstarts/setup-platform).
